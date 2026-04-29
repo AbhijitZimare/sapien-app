@@ -1,3 +1,5 @@
+// Icons: lucide-react ONLY — no emoji, no other icon libraries
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-sapien-navy flex flex-col items-center justify-center">

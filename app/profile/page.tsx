@@ -1,3 +1,5 @@
+// Icons: lucide-react ONLY — no emoji, no other icon libraries
+
 export default function ProfilePage() {
   return (
     <div className="min-h-screen flex items-center justify-center"

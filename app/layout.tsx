@@ -1,3 +1,4 @@
+// Icon library: lucide-react only (lucide.dev/icons)
 import type { Metadata } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
