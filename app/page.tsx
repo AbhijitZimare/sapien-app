@@ -2,7 +2,10 @@
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-sapien-navy flex flex-col items-center justify-center">
+    <main
+      id="main-content"
+      className="min-h-screen bg-sapien-navy flex flex-col items-center justify-center"
+    >
       <div className="text-center">
         <h1
           className="text-white text-6xl font-display font-light tracking-tight mb-4"

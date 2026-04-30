@@ -18,6 +18,10 @@ export default async function LearnPage() {
     .eq('user_id', user.id)
     .single()
 
+  if (!profile?.onboarding_complete) {
+    redirect('/onboarding')
+  }
+
   if (!profile?.board || !profile?.grade) {
     redirect('/profile?setup=true')
   }

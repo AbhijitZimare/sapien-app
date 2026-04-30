@@ -131,7 +131,10 @@ export default function LoginPage() {
       </div>
 
       {/* Right panel — form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
+      <main
+        id="main-content"
+        className="flex-1 flex flex-col items-center justify-center p-8"
+      >
         {/* Mobile header */}
         <div
           className="lg:hidden text-center mb-8"
@@ -303,7 +306,7 @@ export default function LoginPage() {
             </button>
           </p>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

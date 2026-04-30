@@ -14,22 +14,24 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           )
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           )
         },
       },
-    }
+    },
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const protectedPaths = ['/dashboard', '/learn', '/profile']
-  const isProtected = protectedPaths.some(path =>
-    request.nextUrl.pathname.startsWith(path)
+  const protectedPaths = ['/dashboard', '/learn', '/profile', '/onboarding']
+  const isProtected = protectedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path),
   )
 
   if (isProtected && !user) {
@@ -38,16 +40,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (request.nextUrl.pathname === '/login' && user) {
+  async function onboardingComplete(): Promise<boolean | null> {
+    if (!user) return null
+    const { data: profile } = await supabase
+      .from('student_profiles')
+      .select('onboarding_complete')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    return profile?.onboarding_complete === true
+  }
+
+  const path = request.nextUrl.pathname
+
+  if (path === '/login' && user) {
+    const ready = await onboardingComplete()
     const url = request.nextUrl.clone()
-    url.pathname = '/learn'
+    url.pathname = ready === true ? '/learn' : '/onboarding'
     return NextResponse.redirect(url)
   }
 
-  if (request.nextUrl.pathname === '/' && user) {
+  if (path === '/' && user) {
+    const ready = await onboardingComplete()
     const url = request.nextUrl.clone()
-    url.pathname = '/learn'
+    url.pathname = ready === true ? '/learn' : '/onboarding'
     return NextResponse.redirect(url)
+  }
+
+  if (path.startsWith('/onboarding') && user) {
+    const ready = await onboardingComplete()
+    if (ready === true) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/learn'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

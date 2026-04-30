@@ -99,7 +99,7 @@ Ask what they want to work on today.
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
+      <main id="main-content" className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
           {visibleMessages.map((m, index) => {
             const isLast = index === visibleMessages.length - 1

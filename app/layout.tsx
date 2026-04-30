@@ -31,6 +31,9 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <a href="#main-content" className="skip-to-main-content">
+          Skip to main content
+        </a>
         <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>

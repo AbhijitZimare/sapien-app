@@ -2,8 +2,11 @@
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center"
-      style={{ background: '#F4F4F4' }}>
+    <main
+      id="main-content"
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: '#F4F4F4' }}
+    >
       <div className="text-center">
         <h1 className="text-4xl font-light"
           style={{ fontFamily: 'Cormorant Garamond, serif',
@@ -11,6 +14,6 @@ export default function DashboardPage() {
           Your dashboard is being built.
         </h1>
       </div>
-    </div>
+    </main>
   )
 }

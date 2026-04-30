@@ -46,3 +46,71 @@
     font-family: 'Cormorant Garamond', Georgia, serif;
   }
 }
+
+/* WCAG baseline — skip link, focus, motion, targets */
+.skip-to-main-content {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.skip-to-main-content:focus-visible {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  padding: 0.5rem 1rem;
+  background: var(--sapien-navy);
+  color: var(--sapien-white);
+  border-radius: 0.5rem;
+  outline: none;
+  width: auto;
+  height: auto;
+  margin: 0;
+  clip: auto;
+  overflow: visible;
+  white-space: normal;
+}
+
+/* Focus indicators — WCAG 2.1 AA */
+:focus-visible {
+  outline: 2px solid #0BB5AD;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Minimum touch target size */
+button,
+a,
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
