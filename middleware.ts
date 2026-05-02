@@ -41,6 +41,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  const adminAllowlist =
+    process.env.ADMIN_EMAIL?.trim().toLowerCase() ??
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLowerCase() ??
+    ''
+  const isAdminPath =
+    pathname === '/admin' || pathname.startsWith('/admin/')
+  if (
+    isAdminPath &&
+    adminAllowlist !== '' &&
+    (user.email ?? '').trim().toLowerCase() !== adminAllowlist
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/learn'
+    return NextResponse.redirect(url)
+  }
+
   if (pathname === '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/learn'
