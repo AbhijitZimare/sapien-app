@@ -3,7 +3,6 @@
 // Icons: lucide-react ONLY — no emoji, no other icon libraries
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   ArrowRight,
@@ -203,8 +202,6 @@ export default function OnboardingClient({
   userEmail,
   initialName,
 }: Props) {
-  const router = useRouter()
-
   const [step, setStep] = useState(0)
   const [direction, setDirection] = useState<'forward' | 'back'>('forward')
   const [animating, setAnimating] = useState(false)
@@ -521,7 +518,7 @@ export default function OnboardingClient({
     let schoolId = data?.[0]?.id as string | undefined
 
     if (error) {
-      console.error('school insert', error)
+      console.error('School insert error:', JSON.stringify(error, null, 2))
       const { data: found } = await supabase
         .from('schools')
         .select('id')
@@ -596,20 +593,20 @@ export default function OnboardingClient({
   }
 
   async function handleFinish() {
+    if (saving) return
     setSaving(true)
+
     try {
       const supabase = createClient()
-
       const schoolVer = resolveSchoolVerificationForSave()
 
-      const payload: Record<string, unknown> = {
-        name: form.name.trim(),
+      const payload = {
+        name: form.name.trim() || initialName.trim() || 'Student',
         board: form.board,
         grade: form.grade,
         city: toTitleCase(form.city),
-        pin_code: form.pinCode,
+        pin_code: form.pinCode || null,
         state: form.state || null,
-        district: form.district || null,
         school_id: form.school_id || null,
         school_name: form.school_name
           ? toTitleCase(form.school_name)
@@ -625,13 +622,15 @@ export default function OnboardingClient({
         .update(payload)
         .eq('user_id', userId)
 
-      if (error) throw error
+      if (error) {
+        console.error('Onboarding save error:', error.message)
+        setSaving(false)
+        return
+      }
 
-      router.push('/learn')
-      router.refresh()
-    } catch {
-      // retry on last screen
-    } finally {
+      window.location.href = '/learn'
+    } catch (err) {
+      console.error('Onboarding finish error:', err)
       setSaving(false)
     }
   }
@@ -1113,7 +1112,13 @@ export default function OnboardingClient({
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <button
               type="button"
-              onClick={() => void (isLastStep ? handleFinish() : goNext())}
+              onClick={() => {
+                if (isLastStep) {
+                  void handleFinish()
+                } else {
+                  goNext()
+                }
+              }}
               disabled={!canContinue || saving || (currentStep.id === 'city_pin' && cityValidation !== 'valid')}
               className="flex items-center gap-3 rounded-2xl px-8 py-4 text-sm font-medium transition-all disabled:opacity-40"
               style={{

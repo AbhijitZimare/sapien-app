@@ -1,7 +1,10 @@
 import { redirect } from 'next/navigation'
 
-import ProfileClient from './profile-client'
+import ErrorBoundary from '@/components/error-boundary'
+import AppShellWrapper from '@/components/layout/app-shell-wrapper'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+
+import ProfileClient from './profile-client'
 
 export default async function ProfilePage() {
   const supabase = await createServerSupabaseClient()
@@ -16,6 +19,8 @@ export default async function ProfilePage() {
     .eq('user_id', user.id)
     .single()
 
+  if (!profile?.onboarding_complete) redirect('/onboarding')
+
   const { data: stats } = await supabase
     .from('user_stats')
     .select('*')
@@ -23,12 +28,16 @@ export default async function ProfilePage() {
     .single()
 
   return (
-    <ProfileClient
-      profile={profile}
-      stats={stats}
-      userId={user.id}
-      userEmail={user.email || ''}
-      isSetup={!profile?.board || !profile?.grade}
-    />
+    <AppShellWrapper>
+      <ErrorBoundary>
+        <ProfileClient
+          profile={profile}
+          stats={stats}
+          userId={user.id}
+          userEmail={user.email || ''}
+          isSetup={false}
+        />
+      </ErrorBoundary>
+    </AppShellWrapper>
   )
 }

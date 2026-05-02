@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 
-import OnboardingClient from './onboarding-client'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+
+import OnboardingClient from './onboarding-client'
 
 export default async function OnboardingPage() {
   const supabase = await createServerSupabaseClient()
@@ -12,17 +13,23 @@ export default async function OnboardingPage() {
 
   const { data: profile } = await supabase
     .from('student_profiles')
-    .select('*')
+    .select('onboarding_complete, board, grade, name')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (profile?.onboarding_complete) redirect('/learn')
+  if (
+    profile?.onboarding_complete === true &&
+    Boolean(profile.board?.trim()) &&
+    Boolean(profile.grade?.trim())
+  ) {
+    redirect('/learn')
+  }
 
   return (
     <OnboardingClient
       userId={user.id}
       userEmail={user.email || ''}
-      initialName={(profile?.name as string | undefined) || ''}
+      initialName={profile?.name?.trim() || ''}
     />
   )
 }
