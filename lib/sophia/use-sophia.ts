@@ -10,6 +10,8 @@ export interface Message {
   role: 'user' | 'assistant'
   content: string
   createdAt: Date
+  promptKey?: string | null
+  feedback?: 'positive' | 'negative' | null
 }
 
 export interface AssistantStreamPersistMeta {
@@ -22,7 +24,7 @@ export interface UseSophiaPersistence {
   onAfterStream?: (
     assistantContent: string,
     meta: AssistantStreamPersistMeta,
-  ) => Promise<void>
+  ) => Promise<string | undefined>
 }
 
 export function useSophia(
@@ -43,6 +45,8 @@ export function useSophia(
         role: m.role,
         content: m.content,
         createdAt: new Date(m.created_at),
+        promptKey: m.prompt_key ?? null,
+        feedback: m.feedback ?? null,
       })),
     )
   }, [])
@@ -150,20 +154,37 @@ export function useSophia(
           } catch (e) {
             console.error('META PARSE FAILED:', e, 'raw was:', metaRaw)
           }
-          setMessages((prev) => {
-            const updated = [...prev]
-            const last = updated.length - 1
-            updated[last] = { ...updated[last], content: accumulated }
-            return updated
-          })
         }
+
+        setMessages((prev) => {
+          const updated = [...prev]
+          const last = updated.length - 1
+          updated[last] = {
+            ...updated[last],
+            content: accumulated,
+            promptKey,
+            feedback: null,
+          }
+          return updated
+        })
 
         try {
           if (persistence?.onAfterStream) {
-            await persistence.onAfterStream(accumulated, {
+            const savedId = await persistence.onAfterStream(accumulated, {
               promptKey,
               wasCacheHit,
             })
+            if (typeof savedId === 'string' && savedId.trim() !== '') {
+              setMessages((prev) => {
+                const updated = [...prev]
+                const last = updated.length - 1
+                updated[last] = {
+                  ...updated[last],
+                  id: savedId.trim(),
+                }
+                return updated
+              })
+            }
           }
         } catch (persistErr) {
           console.error('useSophia: onAfterStream', persistErr)
@@ -189,6 +210,57 @@ export function useSophia(
     setMessages([])
   }, [])
 
+  const submitFeedback = useCallback(
+    async (
+      messageId: string,
+      rating: 'positive' | 'negative',
+      promptKey: string | null,
+    ) => {
+      if (sessionId == null || sessionId.trim() === '') return
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, feedback: rating } : m,
+        ),
+      )
+
+      try {
+        const res = await fetch('/api/response/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messageId,
+            sessionId,
+            rating,
+            ...(promptKey ? { promptKey } : {}),
+          }),
+        })
+        let ok = false
+        try {
+          const data = (await res.json()) as { success?: boolean }
+          ok = res.ok && data.success === true
+        } catch {
+          ok = false
+        }
+        if (!ok) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === messageId ? { ...m, feedback: null } : m,
+            ),
+          )
+        }
+      } catch (err) {
+        console.error('submitFeedback:', err)
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId ? { ...m, feedback: null } : m,
+          ),
+        )
+      }
+    },
+    [sessionId],
+  )
+
   return {
     messages,
     isStreaming,
@@ -197,5 +269,6 @@ export function useSophia(
     sendMessage,
     clearMessages,
     hydrateMessages,
+    submitFeedback,
   }
 }

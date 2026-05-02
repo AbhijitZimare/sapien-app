@@ -9,6 +9,8 @@ import {
   PanelLeft,
   Plus,
   Send,
+  ThumbsDown,
+  ThumbsUp,
   X,
 } from 'lucide-react'
 
@@ -122,9 +124,9 @@ export default function LearnClient({ student, userId }: LearnClientProps) {
       onAfterStream: async (
         assistantContent: string,
         meta: AssistantStreamPersistMeta,
-      ) => {
-        if (!activeSessionId) return
-        if (lastStreamWasGreetingRef.current) return
+      ): Promise<string | undefined> => {
+        if (!activeSessionId) return undefined
+        if (lastStreamWasGreetingRef.current) return undefined
         const idx = nextDbIndexRef.current
         const r = await saveMessage({
           sessionId: activeSessionId,
@@ -149,9 +151,10 @@ export default function LearnClient({ student, userId }: LearnClientProps) {
                 : s,
             ),
           )
-        } else {
-          console.error('Assistant message save:', r.error.message)
+          return r.data.id
         }
+        console.error('Assistant message save:', r.error.message)
+        return undefined
       },
     }),
     [activeSessionId, userId],
@@ -164,6 +167,7 @@ export default function LearnClient({ student, userId }: LearnClientProps) {
     sendMessage,
     clearMessages,
     hydrateMessages,
+    submitFeedback,
   } = useSophia(student, activeSessionId, isLoadingHistory, persistence)
 
   const visibleMessages = useMemo(
@@ -547,6 +551,13 @@ Ask what they want to work on today.
                   m.role === 'assistant' &&
                   isStreaming &&
                   m.content.trim() === ''
+                const feedbackLocked =
+                  m.feedback === 'positive' || m.feedback === 'negative'
+                const showThumbs =
+                  m.role === 'assistant' &&
+                  !showSpinner &&
+                  !(isStreaming && isLast) &&
+                  m.content.trim() !== ''
 
                 return (
                   <div
@@ -558,30 +569,80 @@ Ask what they want to work on today.
                     }
                   >
                     <div
-                      className="max-w-[min(85%,28rem)] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
-                      style={{
-                        fontFamily: 'DM Sans, system-ui, sans-serif',
-                        background: m.role === 'user' ? '#0BB5AD' : '#FFFFFF',
-                        color: m.role === 'user' ? '#FFFFFF' : '#0D1B2A',
-                        boxShadow:
-                          m.role === 'assistant'
-                            ? '0 1px 3px rgba(13,27,42,0.08)'
-                            : undefined,
-                        border:
-                          m.role === 'assistant'
-                            ? '1px solid #E8E4DC'
-                            : undefined,
-                      }}
+                      className={
+                        m.role === 'user'
+                          ? 'flex flex-col items-end'
+                          : 'flex flex-col items-start'
+                      }
                     >
-                      {showSpinner ? (
-                        <Loader2
-                          className="h-5 w-5 animate-spin"
-                          aria-label="Sophia is typing"
-                          style={{ color: '#0BB5AD' }}
-                        />
-                      ) : (
-                        m.content
-                      )}
+                      <div
+                        className="max-w-[min(85%,28rem)] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
+                        style={{
+                          fontFamily: 'DM Sans, system-ui, sans-serif',
+                          background: m.role === 'user' ? '#0BB5AD' : '#FFFFFF',
+                          color: m.role === 'user' ? '#FFFFFF' : '#0D1B2A',
+                          boxShadow:
+                            m.role === 'assistant'
+                              ? '0 1px 3px rgba(13,27,42,0.08)'
+                              : undefined,
+                          border:
+                            m.role === 'assistant'
+                              ? '1px solid #E8E4DC'
+                              : undefined,
+                        }}
+                      >
+                        {showSpinner ? (
+                          <Loader2
+                            className="h-5 w-5 animate-spin"
+                            aria-label="Sophia is typing"
+                            style={{ color: '#0BB5AD' }}
+                          />
+                        ) : (
+                          m.content
+                        )}
+                      </div>
+                      {showThumbs ? (
+                        <div className="mt-1 ml-1 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void submitFeedback(
+                                m.id,
+                                'positive',
+                                m.promptKey ?? null,
+                              )
+                            }
+                            aria-label="Helpful"
+                            disabled={feedbackLocked}
+                            className={`flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border transition-all duration-150 disabled:cursor-default ${
+                              m.feedback === 'positive'
+                                ? 'border-[#0BB5AD] bg-teal-50 text-[#0BB5AD]'
+                                : 'border-[#E8E4DC] bg-transparent text-[#9CA3AF] hover:border-[#0BB5AD] hover:text-[#0BB5AD]'
+                            }`}
+                          >
+                            <ThumbsUp size={12} aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void submitFeedback(
+                                m.id,
+                                'negative',
+                                m.promptKey ?? null,
+                              )
+                            }
+                            aria-label="Not helpful"
+                            disabled={feedbackLocked}
+                            className={`flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border transition-all duration-150 disabled:cursor-default ${
+                              m.feedback === 'negative'
+                                ? 'border-red-400 bg-red-50 text-red-400'
+                                : 'border-[#E8E4DC] bg-transparent text-[#9CA3AF] hover:border-red-400 hover:text-red-400'
+                            }`}
+                          >
+                            <ThumbsDown size={12} aria-hidden />
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 )
