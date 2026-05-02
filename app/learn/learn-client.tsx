@@ -15,7 +15,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import type { StudentContext } from '@/lib/sophia/system-prompt'
-import { useSophia, type Message } from '@/lib/sophia/use-sophia'
+import {
+  useSophia,
+  type AssistantStreamPersistMeta,
+  type Message,
+} from '@/lib/sophia/use-sophia'
 import {
   archiveSession,
   createChatSession,
@@ -84,6 +88,8 @@ export default function LearnClient({ student, userId }: LearnClientProps) {
           role: 'user',
           content: userContent,
           messageIndex: idx,
+          promptKey: null,
+          wasCacheHit: false,
         })
         if (!r.success) {
           throw new Error(r.error.message)
@@ -113,7 +119,10 @@ export default function LearnClient({ student, userId }: LearnClientProps) {
           ),
         )
       },
-      onAfterStream: async (assistantContent: string) => {
+      onAfterStream: async (
+        assistantContent: string,
+        meta: AssistantStreamPersistMeta,
+      ) => {
         if (!activeSessionId) return
         if (lastStreamWasGreetingRef.current) return
         const idx = nextDbIndexRef.current
@@ -123,6 +132,8 @@ export default function LearnClient({ student, userId }: LearnClientProps) {
           role: 'assistant',
           content: assistantContent,
           messageIndex: idx,
+          promptKey: meta.promptKey,
+          wasCacheHit: meta.wasCacheHit,
         })
         if (r.success) {
           nextDbIndexRef.current = idx + 1

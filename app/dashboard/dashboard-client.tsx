@@ -2,9 +2,10 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import type { ReactNode, TransitionEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlertCircle,
   ArrowRight,
   BookOpen,
   Brain,
@@ -13,6 +14,7 @@ import {
   Flame,
   Lock,
   MessageSquare,
+  X,
 } from 'lucide-react'
 
 import {
@@ -49,6 +51,14 @@ const BORDER = '#E8E4DC'
 const NAVY = '#0D1B2A'
 const TEAL = '#0BB5AD'
 const AMBER = '#F0A500'
+const PROFILE_NUDGE_DISMISSED_KEY = 'sapien_profile_nudge_dismissed'
+
+function isProfileIncomplete(p: DashboardProfileProps): boolean {
+  const grade = p.grade?.trim() ?? ''
+  const board = p.board?.trim() ?? ''
+  const subject = p.favourite_subject?.trim() ?? ''
+  return !grade || !board || !subject
+}
 
 function zeroStats(userId: string): UserStats {
   return {
@@ -213,6 +223,10 @@ function SectionTitle({ children }: { children: ReactNode }) {
 
 export default function DashboardClient({ userId, profile }: Props) {
   const [loading, setLoading] = useState(true)
+  const [showProfileNudge, setShowProfileNudge] = useState(false)
+  const [profileNudgeOpacity, setProfileNudgeOpacity] = useState(0)
+  const [profileNudgeTransitionMs, setProfileNudgeTransitionMs] = useState(200)
+  const profileNudgeExitingRef = useRef(false)
   const [stats, setStats] = useState<UserStats | null>(null)
   const [recentSessions, setRecentSessions] = useState<ChatSession[] | null>(
     null,
@@ -224,6 +238,31 @@ export default function DashboardClient({ userId, profile }: Props) {
   const [weekActivity, setWeekActivity] = useState<Record<string, number>>({})
 
   const recentRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!isProfileIncomplete(profile)) {
+      setShowProfileNudge(false)
+      setProfileNudgeOpacity(0)
+      return
+    }
+    if (window.localStorage.getItem(PROFILE_NUDGE_DISMISSED_KEY) === '1') return
+    setShowProfileNudge(true)
+    profileNudgeExitingRef.current = false
+    setProfileNudgeTransitionMs(200)
+    setProfileNudgeOpacity(0)
+    let raf1 = 0
+    let raf2 = 0
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setProfileNudgeOpacity(1)
+      })
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [profile.grade, profile.board, profile.favourite_subject])
 
   useEffect(() => {
     let cancelled = false
@@ -305,6 +344,22 @@ export default function DashboardClient({ userId, profile }: Props) {
     recentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  function dismissProfileNudge() {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(PROFILE_NUDGE_DISMISSED_KEY, '1')
+    }
+    profileNudgeExitingRef.current = true
+    setProfileNudgeTransitionMs(150)
+    setProfileNudgeOpacity(0)
+  }
+
+  function onProfileNudgeTransitionEnd(e: TransitionEvent<HTMLDivElement>) {
+    if (e.propertyName !== 'opacity') return
+    if (!profileNudgeExitingRef.current) return
+    profileNudgeExitingRef.current = false
+    setShowProfileNudge(false)
+  }
+
   if (loading) {
     return (
       <div
@@ -347,6 +402,78 @@ export default function DashboardClient({ userId, profile }: Props) {
       style={{ background: PAGE_BG }}
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        {showProfileNudge ? (
+          <div
+            role="region"
+            aria-label="Profile completion reminder"
+            className="w-full"
+            style={{
+              opacity: profileNudgeOpacity,
+              transition: `opacity ${profileNudgeTransitionMs}ms ease-out`,
+            }}
+            onTransitionEnd={onProfileNudgeTransitionEnd}
+          >
+            <div
+              className="flex w-full flex-row flex-wrap items-center justify-between gap-3"
+              style={{
+                background: '#FEF3C7',
+                border: '1px solid #F0A500',
+                borderRadius: 10,
+                padding: '12px 16px',
+              }}
+            >
+              <div
+                className="flex min-w-0 flex-1 items-center"
+                style={{ gap: 8 }}
+              >
+                <AlertCircle
+                  className="h-4 w-4 shrink-0"
+                  style={{ color: '#92400E' }}
+                  aria-hidden
+                />
+                <p
+                  className="min-w-0 leading-snug"
+                  style={{
+                    fontFamily: 'DM Sans, system-ui, sans-serif',
+                    fontSize: 13,
+                    color: '#92400E',
+                  }}
+                >
+                  Complete your profile for personalised recommendations
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center" style={{ gap: 8 }}>
+                <button
+                  type="button"
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md px-3 font-medium text-white"
+                  style={{
+                    fontFamily: 'DM Sans, system-ui, sans-serif',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    background: '#F0A500',
+                    borderRadius: 6,
+                    padding: '6px 12px',
+                  }}
+                  aria-label="Complete your profile"
+                  onClick={() => {
+                    window.location.href = '/profile'
+                  }}
+                >
+                  Complete Profile
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-md"
+                  style={{ color: '#92400E' }}
+                  aria-label="Dismiss profile nudge"
+                  onClick={dismissProfileNudge}
+                >
+                  <X className="h-[14px] w-[14px]" aria-hidden />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {/* ROW 1 */}
         <header>
           <h1

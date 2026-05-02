@@ -269,7 +269,10 @@ export async function POST(request: Request) {
         subject: profile.favourite_subject ?? null,
       })
 
-      return new Response(cachedText, {
+      const meta = JSON.stringify({ promptKey, wasCacheHit: true })
+      const bodyWithMeta = cachedText + '|||META|||' + meta
+
+      return new Response(bodyWithMeta, {
         status: 200,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       })
@@ -346,6 +349,11 @@ export async function POST(request: Request) {
             sessionId,
             userId: user.id,
           }),
+        )
+
+        const meta = JSON.stringify({ promptKey, wasCacheHit: false })
+        controller.enqueue(
+          new TextEncoder().encode('|||META|||' + meta),
         )
         controller.close()
       },

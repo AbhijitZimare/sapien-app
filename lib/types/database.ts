@@ -211,3 +211,13 @@ export interface CacheEntry {
   last_served_at: string | null
   invalidated_at: string | null
 }
+
+export interface SaveMessageParams {
+  sessionId: string
+  userId: string
+  role: 'user' | 'assistant'
+  content: string
+  messageIndex: number
+  promptKey?: string | null
+  wasCacheHit?: boolean
+}

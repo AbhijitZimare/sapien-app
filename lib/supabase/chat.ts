@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/client'
-import type { ChatMessage, ChatSession } from '@/lib/types/database'
+import type {
+  ChatMessage,
+  ChatSession,
+  SaveMessageParams,
+} from '@/lib/types/database'
 
 export type ChatSuccess<T> = { success: true; data: T }
 export type ChatFailure = {
@@ -59,8 +63,9 @@ function rowToMessage(row: Record<string, unknown>): ChatMessage {
     content: String(row.content ?? ''),
     message_index: Number(row.message_index ?? 0),
     feedback,
-    prompt_key: typeof pk === 'string' && pk.length > 0 ? pk : null,
-    was_cache_hit: row.was_cache_hit === true,
+    prompt_key: typeof pk === 'string' ? pk : null,
+    was_cache_hit:
+      typeof row.was_cache_hit === 'boolean' ? row.was_cache_hit : false,
     created_at: String(row.created_at ?? ''),
   }
 }
@@ -192,14 +197,6 @@ export async function getChatMessages(
   }
 }
 
-export interface SaveMessageParams {
-  sessionId: string
-  userId: string
-  role: 'user' | 'assistant'
-  content: string
-  messageIndex: number
-}
-
 export async function saveMessage(
   params: SaveMessageParams,
 ): Promise<ChatResult<ChatMessage>> {
@@ -215,6 +212,8 @@ export async function saveMessage(
         role,
         content,
         message_index: messageIndex,
+        prompt_key: params.promptKey ?? null,
+        was_cache_hit: params.wasCacheHit ?? false,
       })
       .select()
       .single()

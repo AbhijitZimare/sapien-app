@@ -12,9 +12,17 @@ export interface Message {
   createdAt: Date
 }
 
+export interface AssistantStreamPersistMeta {
+  promptKey: string | null
+  wasCacheHit: boolean
+}
+
 export interface UseSophiaPersistence {
   onBeforeStream?: (userContent: string) => Promise<void>
-  onAfterStream?: (assistantContent: string) => Promise<void>
+  onAfterStream?: (
+    assistantContent: string,
+    meta: AssistantStreamPersistMeta,
+  ) => Promise<void>
 }
 
 export function useSophia(
@@ -106,6 +114,9 @@ export function useSophia(
 
         if (!reader) throw new Error('No reader')
 
+        let promptKey: string | null = null
+        let wasCacheHit = false
+
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
@@ -123,9 +134,36 @@ export function useSophia(
           })
         }
 
+        const META_DELIMITER = '|||META|||'
+        if (accumulated.includes(META_DELIMITER)) {
+          const delimIndex = accumulated.indexOf(META_DELIMITER)
+          const cleanText = accumulated.slice(0, delimIndex)
+          const metaRaw = accumulated.slice(delimIndex + META_DELIMITER.length)
+          accumulated = cleanText
+          try {
+            const meta = JSON.parse(metaRaw.trim()) as {
+              promptKey?: string
+              wasCacheHit?: boolean
+            }
+            promptKey = meta.promptKey ?? null
+            wasCacheHit = meta.wasCacheHit ?? false
+          } catch (e) {
+            console.error('META PARSE FAILED:', e, 'raw was:', metaRaw)
+          }
+          setMessages((prev) => {
+            const updated = [...prev]
+            const last = updated.length - 1
+            updated[last] = { ...updated[last], content: accumulated }
+            return updated
+          })
+        }
+
         try {
           if (persistence?.onAfterStream) {
-            await persistence.onAfterStream(accumulated)
+            await persistence.onAfterStream(accumulated, {
+              promptKey,
+              wasCacheHit,
+            })
           }
         } catch (persistErr) {
           console.error('useSophia: onAfterStream', persistErr)
